@@ -1,0 +1,706 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8" />
+  <title>2025 · A Year in Motion</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+
+  <style>
+    body, html {
+      margin: 0; padding: 0; width: 100%; height: 100%;
+      overflow: hidden; background-color: #000;
+      font-family: 'Space Mono', monospace; color: #dfe6eb;
+      box-sizing: border-box;
+    }
+
+    *, *:before, *:after { box-sizing: inherit; }
+
+    #webgl { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 0; outline: none; }
+
+    .content {
+      position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+      text-align: center; z-index: 10; transition: all 1.2s cubic-bezier(0.4, 0, 0.2, 1);
+      width: 100%; pointer-events: none;
+    }
+
+    .content h1 {
+      font-family: 'Cinzel', serif; font-size: 3.2rem; color: #f3d37c;
+      letter-spacing: 12px; margin: 0; text-transform: uppercase;
+      text-shadow: 0 0 30px rgba(243, 211, 124, 0.3); transition: all 1.5s ease;
+    }
+
+    .countdown-wrap {
+      margin-top: 40px; font-size: 1.5rem; color: #f3d37c; letter-spacing: 4px;
+      opacity: 0; transform: translateY(10px); transition: all 1s ease 0.5s; pointer-events: auto;
+    }
+
+    .scene-active .countdown-wrap { opacity: 1; transform: translateY(0); }
+
+    .countdown-label { font-size: 0.6rem; display: block; margin-top: 5px; opacity: 0.5; letter-spacing: 2px; }
+
+    .btn-elegant {
+      background: transparent; border: 1px solid rgba(243, 211, 124, 0.4);
+      color: #f3d37c; font-family: 'Space Mono', monospace; padding: 12px 30px;
+      letter-spacing: 4px; cursor: pointer; transition: all 0.4s; pointer-events: auto;
+      text-transform: uppercase; font-size: 0.8rem; outline: none; position: relative;
+    }
+
+    .btn-elegant:hover {
+      background: rgba(243, 211, 124, 0.2); box-shadow: 0 0 30px rgba(243, 211, 124, 0.4);
+      border-color: #f3d37c; color: #fff;
+    }
+
+    .scene-active .content { top: 5%; transform: translate(-50%, 0); opacity: 0.8; }
+    .scene-active .content h1 { font-size: 1.6rem; letter-spacing: 8px; }
+    .scene-active .enter-btn-wrap { display: none; }
+
+    .wish-container {
+      position: fixed; bottom: 100px; left: 50%; transform: translateX(-50%) translateY(50px);
+      z-index: 30; display: flex; gap: 12px; background: rgba(255, 255, 255, 0.03);
+      backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+      padding: 12px 24px; border-radius: 2px; border: 1px solid rgba(243, 211, 124, 0.15);
+      transition: all 0.8s cubic-bezier(0.4, 0, 0.2, 1); pointer-events: none; opacity: 0;
+    }
+    .scene-active .wish-container { opacity: 1; transform: translateX(-50%) translateY(0); pointer-events: auto; }
+
+    .wish-input {
+      background: transparent; border: none; color: #dfe6eb;
+      font-family: 'Space Mono', monospace; font-size: 0.9rem; width: 280px; outline: none;
+    }
+    .wish-input::placeholder { color: rgba(223, 230, 235, 0.25); }
+
+    .send-btn {
+      background: transparent; border: none; color: #f3d37c; font-family: 'Space Mono', monospace;
+      font-weight: bold; text-transform: uppercase; cursor: pointer; letter-spacing: 3px;
+    }
+
+    .nav-group {
+      position: fixed; bottom: 120px; right: 40px; display: flex; flex-direction: column;
+      align-items: flex-end; gap: 12px; z-index: 50; opacity: 0; pointer-events: none; transition: opacity 0.8s;
+    }
+    .scene-active .nav-group { opacity: 1; pointer-events: auto; }
+    .nav-group .btn-elegant { width: 130px; padding: 8px 0; text-align: center; font-size: 0.65rem; }
+
+    .music-toggle-wrapper {
+      position: fixed; bottom: 40px; right: 40px; z-index: 51; display: flex;
+      align-items: center; gap: 15px; opacity: 0; transition: opacity 0.8s; pointer-events: none;
+    }
+    .scene-active .music-toggle-wrapper { opacity: 1; pointer-events: auto; }
+
+    .music-toggle {
+      width: 45px; height: 45px; border-radius: 50%; border: 1px solid rgba(243, 211, 124, 0.4);
+      display: flex; align-items: center; justify-content: center; cursor: pointer; color: #f3d37c;
+      background: rgba(0,0,0,0.4); transition: all 0.3s;
+    }
+    .music-toggle.playing { animation: rotateCD 5s linear infinite; border-color: #f3d37c; box-shadow: 0 0 15px rgba(243, 211, 124, 0.3); }
+    @keyframes rotateCD { 100% { transform: rotate(360deg); } }
+
+    .overlay {
+      position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+      z-index: 1000; opacity: 0; display: none; pointer-events: none;
+      transition: opacity 0.6s ease; overflow: hidden;
+    }
+    .overlay.active { opacity: 1; display: block; pointer-events: auto; }
+
+    .overlay-bg {
+      position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(0,0,0,0.96); backdrop-filter: blur(40px); -webkit-backdrop-filter: blur(40px); z-index: -1;
+    }
+
+    .overlay-scroll {
+      position: relative; width: 100%; height: 100%; overflow-y: scroll;
+      display: flex; flex-direction: column; align-items: center; 
+      padding: 140px 0 0 0; 
+      z-index: 1;
+      scroll-behavior: smooth;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    .close-btn {
+      position: fixed; top: 40px; right: 40px; z-index: 2000;
+      pointer-events: auto !important; cursor: pointer !important;
+      border: 1px solid #f3d37c !important; background: rgba(0,0,0,0.8) !important;
+      color: #f3d37c !important; transition: all 0.3s;
+    }
+    .close-btn:hover { box-shadow: 0 0 25px #f3d37c !important; background: #f3d37c !important; color: #000 !important; }
+
+    .gallery-content { max-width: 1200px; width: 95%; text-align: center; display: flex; flex-direction: column; gap: 60px; }
+    .gallery-item { opacity: 0; transform: translateY(30px); transition: all 1s cubic-bezier(0.4, 0, 0.2, 1); width: 100%; flex-shrink: 0; }
+    .overlay.active .gallery-item { opacity: 1; transform: translateY(0); }
+
+    .gallery-img {
+      width: 100%; max-height: 85vh; object-fit: contain; 
+      border: 1px solid rgba(243, 211, 124, 0.1); border-radius: 4px;
+      filter: grayscale(0.1); transition: all 0.5s;
+      background: rgba(255, 255, 255, 0.02); 
+    }
+    .gallery-img:hover { filter: grayscale(0); border-color: #f3d37c; box-shadow: 0 20px 80px rgba(0,0,0,0.7); transform: scale(1.01); }
+
+    .scroll-spacer { height: 400px; width: 100%; flex-shrink: 0; pointer-events: none; }
+
+    .controls-hint {
+      position: fixed; bottom: 40px; left: 50%; transform: translateX(-50%);
+      color: rgba(243, 211, 124, 0.3); font-size: 0.6rem; letter-spacing: 2px;
+      text-align: center; pointer-events: none; z-index: 20; opacity: 0; transition: opacity 1s;
+    }
+    .scene-active .controls-hint { opacity: 1; }
+
+    #video-container {
+      position: fixed; bottom: 30px; right: 110px; width: 120px; height: 90px;
+      border-radius: 4px; overflow: hidden; border: 1px solid rgba(243, 211, 124, 0.15);
+      background: #000; transform: scaleX(-1); z-index: 20; opacity: 0; pointer-events: none; transition: opacity 0.5s ease;
+    }
+    #video-container.visible { opacity: 1; pointer-events: auto; }
+    #webcam-video { width: 100%; height: 100%; object-fit: cover; }
+
+    #loader {
+      position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+      background: #000; z-index: 10000; display: flex; flex-direction: column;
+      align-items: center; justify-content: center; transition: opacity 1s ease;
+    }
+    .spinner { width: 30px; height: 30px; border: 1px solid rgba(243, 211, 124, 0.1); border-top: 1px solid #f3d37c; border-radius: 50%; animation: spin 1s linear infinite; margin-bottom: 20px; }
+    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    .loader-text { font-size: 10px; letter-spacing: 4px; color: #f3d37c; opacity: 0.6; }
+
+    .hidden { opacity: 0 !important; pointer-events: none !important; }
+  </style>
+</head>
+<body id="body-wrap">
+
+  <div id="loader">
+    <div class="spinner"></div>
+    <div class="loader-text">SYNCING 2025 ASSETS</div>
+  </div>
+
+  <canvas id="webgl"></canvas>
+
+  <!-- 回忆画廊遮罩层 - 已移除所有文字描述 -->
+  <div class="overlay" id="gallery-overlay">
+    <div class="overlay-bg"></div>
+    <div class="overlay-scroll" id="gallery-scroll-container">
+      <div class="gallery-content">
+        <div class="gallery-item" style="transition-delay: 0.05s;"><img src="https://raw.githubusercontent.com/shuyangtian/my-web/main/1.JPG" alt="Memory" class="gallery-img"></div>
+        <div class="gallery-item" style="transition-delay: 0.1s;"><img src="https://raw.githubusercontent.com/shuyangtian/my-web/main/2.JPG" alt="Memory" class="gallery-img"></div>
+        <div class="gallery-item" style="transition-delay: 0.15s;"><img src="https://raw.githubusercontent.com/shuyangtian/my-web/main/3.JPG" alt="Memory" class="gallery-img"></div>
+        <div class="gallery-item" style="transition-delay: 0.2s;"><img src="https://raw.githubusercontent.com/shuyangtian/my-web/main/4.JPG" alt="Memory" class="gallery-img"></div>
+        <div class="gallery-item" style="transition-delay: 0.25s;"><img src="https://raw.githubusercontent.com/shuyangtian/my-web/main/5.JPG" alt="Memory" class="gallery-img"></div>
+        <div class="gallery-item" style="transition-delay: 0.3s;"><img src="https://raw.githubusercontent.com/shuyangtian/my-web/main/6.JPG" alt="Memory" class="gallery-img"></div>
+        <div class="gallery-item" style="transition-delay: 0.35s;"><img src="https://raw.githubusercontent.com/shuyangtian/my-web/main/7.JPG" alt="Memory" class="gallery-img"></div>
+        <div class="gallery-item" style="transition-delay: 0.4s;"><img src="https://raw.githubusercontent.com/shuyangtian/my-web/main/8.JPG" alt="Memory" class="gallery-img"></div>
+        <div class="gallery-item" style="transition-delay: 0.45s;"><img src="https://raw.githubusercontent.com/shuyangtian/my-web/main/9.JPG" alt="Memory" class="gallery-img"></div>
+        <div class="gallery-item" style="transition-delay: 0.5s;"><img src="https://raw.githubusercontent.com/shuyangtian/my-web/main/10.JPG" alt="Memory" class="gallery-img"></div>
+        <div class="gallery-item" style="transition-delay: 0.55s;"><img src="https://raw.githubusercontent.com/shuyangtian/my-web/main/11.JPG" alt="Memory" class="gallery-img"></div>
+        <div class="gallery-item" style="transition-delay: 0.6s;"><img src="https://raw.githubusercontent.com/shuyangtian/my-web/main/12.JPG" alt="Memory" class="gallery-img"></div>
+        <div class="gallery-item" style="transition-delay: 0.65s;"><img src="https://raw.githubusercontent.com/shuyangtian/my-web/main/13.JPG" alt="Memory" class="gallery-img"></div>
+        <div class="gallery-item" style="transition-delay: 0.7s;"><img src="https://raw.githubusercontent.com/shuyangtian/my-web/main/14.JPG" alt="Memory" class="gallery-img"></div>
+        <div class="gallery-item" style="transition-delay: 0.75s;"><img src="https://raw.githubusercontent.com/shuyangtian/my-web/main/15.JPG" alt="Memory" class="gallery-img"></div>
+        <div class="gallery-item" style="transition-delay: 0.8s;"><img src="https://raw.githubusercontent.com/shuyangtian/my-web/main/16.JPG" alt="Memory" class="gallery-img"></div>
+        <div class="gallery-item" style="transition-delay: 0.85s;"><img src="https://raw.githubusercontent.com/shuyangtian/my-web/main/17.JPG" alt="Memory" class="gallery-img"></div>
+        <div class="gallery-item" style="transition-delay: 0.9s;"><img src="https://raw.githubusercontent.com/shuyangtian/my-web/main/18.JPG" alt="Memory" class="gallery-img"></div>
+        <div class="gallery-item" style="transition-delay: 0.95s;"><img src="https://raw.githubusercontent.com/shuyangtian/my-web/main/19.JPG" alt="Memory" class="gallery-img"></div>
+        <div class="gallery-item" style="transition-delay: 1.0s;"><img src="https://raw.githubusercontent.com/shuyangtian/my-web/main/20.JPG" alt="Memory" class="gallery-img"></div>
+        
+        <div class="scroll-spacer"></div>
+      </div>
+    </div>
+    <button class="btn-elegant close-btn" id="close-gallery">CLOSE</button>
+  </div>
+
+  <main class="content" id="ui-main">
+    <h1 id="main-title-text">2025 · A Year in Motion</h1>
+    
+    <div class="countdown-wrap" id="countdown-container">
+      <span id="countdown-timer">00D : 00H : 00M : 00S</span>
+      <span class="countdown-label">TILL 2026 NEW YEAR</span>
+    </div>
+
+    <div class="enter-btn-wrap">
+      <button class="btn-elegant" id="enter-scene">Enter Experience</button>
+    </div>
+  </main>
+
+  <div class="wish-container" id="wish-ui">
+    <input type="text" id="wish-input" class="wish-input" placeholder="WISH UPON A STAR..." maxlength="40">
+    <button id="send-btn" class="send-btn">SEND</button>
+  </div>
+
+  <div class="nav-group">
+    <button class="btn-elegant" id="open-gallery">MEMORIES</button>
+  </div>
+
+  <div class="music-toggle-wrapper">
+    <div class="music-toggle" id="music-toggle">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18V5l12-2v13"></path><circle cx="6" cy="18" r="3"></circle><circle cx="18" cy="16" r="3"></circle></svg>
+    </div>
+  </div>
+
+  <div id="video-container">
+    <video id="webcam-video" autoplay playsinline></video>
+  </div>
+
+  <div class="controls-hint" id="hint-text">
+    [H] HIDE UI | [V] CAM | [1] GATHER | [2] EXPLODE
+  </div>
+
+  <audio id="bg-music" loop>
+    <source id="music-source" src="https://shuyangtian.github.io/my-web/love.mp3" type="audio/mpeg">
+  </audio>
+
+  <script type="importmap">
+  {
+      "imports": {
+          "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+          "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/",
+          "@mediapipe/tasks-vision": "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.3/+esm"
+      }
+  }
+  </script>
+
+  <script type="module">
+    import * as THREE from 'three';
+    import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+    import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+    import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+    import { FilesetResolver, HandLandmarker } from '@mediapipe/tasks-vision';
+
+    const vertexShader = `
+        uniform float uTime;
+        uniform float uPixelRatio;
+        uniform float uTransition; 
+        uniform float uImpact; 
+        uniform float uNumberMode;
+        attribute float aRandom;
+        attribute float aPhase;
+        attribute float aSpeed;
+        attribute vec3 aScatterPos;
+        attribute vec3 aNumberPos;
+        varying float vHeight;
+        varying float vRandom;
+        varying float vDistance;
+        varying float vTransition;
+        void main() {
+            vRandom = aRandom;
+            vTransition = uTransition;
+            vec3 treePos = position;
+            float h = (treePos.y + 20.0) / 40.0;
+            float radius = (1.0 - h) * 15.0;
+            if(h > 0.98) radius = 0.5 * aRandom;
+            float angle = aPhase + uTime * aSpeed * 0.2;
+            treePos.x = cos(angle) * radius;
+            treePos.z = sin(angle) * radius;
+            treePos.y += sin(uTime * 0.3 + aPhase) * 0.5;
+            vec3 scatterPos = aScatterPos;
+            float explodeScale = 1.0 + sin(uTime * 0.1) * 0.2;
+            scatterPos *= explodeScale;
+            scatterPos += sin(uTime * 0.4 + aPhase * 20.0) * 3.0;
+            vec3 basePos = mix(treePos, scatterPos, uTransition);
+            vec3 finalPos = mix(basePos, aNumberPos, uNumberMode);
+            vHeight = (finalPos.y + 20.0) / 40.0;
+            vec4 mvPosition = modelViewMatrix * vec4(finalPos, 1.0);
+            vDistance = -mvPosition.z;
+            float sizeBase = mix(120.0, 160.0, uTransition);
+            if(uNumberMode > 0.5) sizeBase = 210.0;
+            float impactSize = 1.0 + uImpact * 1.5;
+            gl_PointSize = (sizeBase * aRandom * uPixelRatio * impactSize) / vDistance;
+            if(h > 0.95 && uTransition < 0.5) gl_PointSize *= 1.5;
+            gl_Position = projectionMatrix * mvPosition;
+        }
+    `;
+
+    const fragmentShader = `
+        uniform float uTime;
+        uniform float uImpact;
+        uniform float uNumberMode;
+        varying float vHeight;
+        varying float vRandom;
+        varying float vTransition;
+        void main() {
+            float dist = length(gl_PointCoord - 0.5);
+            if (dist > 0.5) discard;
+            float alpha = smoothstep(0.5, 0.1, dist);
+            vec3 colorGold = vec3(0.95, 0.83, 0.49);
+            vec3 colorPink = vec3(1.0, 0.49, 0.4);
+            vec3 finalColor = mix(colorPink, colorGold, vHeight);
+            finalColor = mix(finalColor, vec3(1.0, 1.0, 1.0), uImpact * 0.4);
+            if(uNumberMode > 0.5) finalColor = mix(finalColor, vec3(1.0), 0.4);
+            if(vHeight > 0.97 && vTransition < 0.5) finalColor = mix(finalColor, vec3(1.0, 0.95, 0.8), 0.8);
+            float flickerSpeed = mix(1.2, 4.0, vTransition);
+            float flicker = 0.7 + 0.3 * sin(uTime * flickerSpeed + vRandom * 10.0);
+            gl_FragColor = vec4(finalColor, alpha * flicker * (0.8 + vTransition * 0.2 + uImpact));
+        }
+    `;
+
+    const wishVertexShader = `
+        uniform float uTime;
+        uniform float uPixelRatio;
+        attribute float aRandom;
+        void main() {
+            vec3 pos = position;
+            pos += sin(uTime * 10.0 + aRandom * 10.0) * 0.2;
+            vec4 mvPosition = modelViewMatrix * vec4(pos, 1.0);
+            gl_PointSize = (180.0 * aRandom * uPixelRatio) / -mvPosition.z;
+            gl_Position = projectionMatrix * mvPosition;
+        }
+    `;
+    const wishFragmentShader = `
+        void main() {
+            float dist = length(gl_PointCoord - 0.5);
+            if (dist > 0.5) discard;
+            float alpha = smoothstep(0.5, 0.05, dist);
+            vec3 core = vec3(1.0, 0.4, 0.6); 
+            vec3 edge = vec3(1.0, 1.0, 1.0); 
+            vec3 color = mix(core, edge, dist * 2.0);
+            gl_FragColor = vec4(color, alpha * 0.9);
+        }
+    `;
+
+    class YearInMotion {
+        constructor() {
+            this.canvas = document.getElementById('webgl');
+            this.state = {
+                active: false,
+                galleryActive: false,
+                transition: 1.0, 
+                targetTransition: 1.0,
+                camVisible: false,
+                uiHidden: false,
+                impact: 0.0,
+                musicPlaying: false,
+                newYearTriggered: false,
+                countdownActive: false,
+                numberMorph: 0.0
+            };
+            this.wishes = [];
+            this.camRadius = 85;
+            this.camY = 10;
+            this.lookY = 0;
+            this.targetNewYear = new Date('January 1, 2026 00:00:00').getTime();
+
+            this.initScene();
+            this.initParticles();
+            this.initPostProcessing();
+            this.initMediaPipe();
+            this.initEvents();
+            this.initCountdown();
+            this.animate();
+        }
+
+        initScene() {
+            this.scene = new THREE.Scene();
+            this.camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 1, 1500);
+            this.renderer = new THREE.WebGLRenderer({ canvas: this.canvas, antialias: true });
+            this.renderer.setSize(window.innerWidth, window.innerHeight);
+            this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            this.mainGroup = new THREE.Group();
+            this.scene.add(this.mainGroup);
+        }
+
+        initParticles() {
+            this.count = 22000;
+            const geometry = new THREE.BufferGeometry();
+            const pos = new Float32Array(this.count * 3);
+            const scatterPos = new Float32Array(this.count * 3);
+            const numberPos = new Float32Array(this.count * 3);
+            const randoms = new Float32Array(this.count);
+            const phases = new Float32Array(this.count);
+            const speeds = new Float32Array(this.count);
+            for (let i = 0; i < this.count; i++) {
+                pos[i * 3 + 1] = (Math.random() * 40) - 20; 
+                const r = 30 + Math.random() * 30;
+                const theta = Math.random() * Math.PI * 2;
+                const phi = Math.acos(2 * Math.random() - 1);
+                scatterPos[i * 3 + 0] = r * Math.sin(phi) * Math.cos(theta);
+                scatterPos[i * 3 + 1] = r * Math.sin(phi) * Math.sin(theta);
+                scatterPos[i * 3 + 2] = r * Math.cos(phi);
+                numberPos[i * 3] = scatterPos[i * 3];
+                numberPos[i * 3 + 1] = scatterPos[i * 3 + 1];
+                numberPos[i * 3 + 2] = scatterPos[i * 3 + 2];
+                randoms[i] = Math.random();
+                phases[i] = Math.random() * Math.PI * 2.0;
+                speeds[i] = 0.5 + Math.random() * 1.5;
+            }
+            geometry.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+            geometry.setAttribute('aScatterPos', new THREE.BufferAttribute(scatterPos, 3));
+            geometry.setAttribute('aNumberPos', new THREE.BufferAttribute(numberPos, 3));
+            geometry.setAttribute('aRandom', new THREE.BufferAttribute(randoms, 1));
+            geometry.setAttribute('aPhase', new THREE.BufferAttribute(phases, 1));
+            geometry.setAttribute('aSpeed', new THREE.BufferAttribute(speeds, 1));
+            this.material = new THREE.ShaderMaterial({
+                vertexShader, fragmentShader,
+                transparent: true, blending: THREE.AdditiveBlending, depthWrite: false,
+                uniforms: { uTime: { value: 0 }, uPixelRatio: { value: Math.min(window.devicePixelRatio, 2) }, uTransition: { value: 1.0 }, uImpact: { value: 0.0 }, uNumberMode: { value: 0.0 } }
+            });
+            this.points = new THREE.Points(geometry, this.material);
+            this.mainGroup.add(this.points);
+            const dustGeo = new THREE.BufferGeometry();
+            const dustPos = new Float32Array(1500 * 3);
+            for(let i=0; i<1500*3; i++) dustPos[i] = (Math.random() - 0.5) * 200;
+            dustGeo.setAttribute('position', new THREE.BufferAttribute(dustPos, 3));
+            this.dust = new THREE.Points(dustGeo, new THREE.PointsMaterial({ size: 0.08, color: 0xf3d37c, transparent: true, opacity: 0.1 }));
+            this.scene.add(this.dust);
+        }
+
+        sampleNumberPoints(digit) {
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            canvas.width = 128; canvas.height = 128;
+            ctx.fillStyle = 'black'; ctx.fillRect(0,0,128,128);
+            ctx.fillStyle = 'white'; ctx.font = 'bold 90px Space Mono';
+            ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+            ctx.fillText(digit, 64, 64);
+            const imgData = ctx.getImageData(0, 0, 128, 128).data;
+            const points = [];
+            for(let y=0; y<128; y+=2) {
+                for(let x=0; x<128; x+=2) {
+                    const idx = (y * 128 + x) * 4;
+                    if(imgData[idx] > 128) {
+                        points.push({ x: (x - 64) * 0.45, y: (64 - y) * 0.45 + 5, z: (Math.random() - 0.5) * 2 });
+                    }
+                }
+            }
+            const attr = this.points.geometry.attributes.aNumberPos;
+            for(let i=0; i<this.count; i++) {
+                const p = points[i % points.length];
+                attr.array[i * 3] = p.x;
+                attr.array[i * 3 + 1] = p.y;
+                attr.array[i * 3 + 2] = p.z;
+            }
+            attr.needsUpdate = true;
+        }
+
+        initPostProcessing() {
+            this.composer = new EffectComposer(this.renderer);
+            this.composer.addPass(new RenderPass(this.scene, this.camera));
+            this.bloom = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 1.2, 0.4, 0.1);
+            this.composer.addPass(this.bloom);
+        }
+
+        async initMediaPipe() {
+            try {
+                const vision = await FilesetResolver.forVisionTasks("https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.3/wasm");
+                this.handLandmarker = await HandLandmarker.createFromOptions(vision, {
+                    baseOptions: { modelAssetPath: `https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task`, delegate: "GPU" },
+                    runningMode: "VIDEO", numHands: 1
+                });
+                this.hideLoader();
+            } catch (e) { this.hideLoader(); }
+        }
+
+        async setupWebcam() {
+            const video = document.getElementById('webcam-video');
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+                video.srcObject = stream;
+                video.onloadeddata = () => { this.predictWebcam(); };
+            } catch (err) { console.warn("Webcam access denied", err); }
+        }
+
+        hideLoader() {
+            const loader = document.getElementById('loader');
+            if(loader) { loader.style.opacity = '0'; setTimeout(() => loader.style.display = 'none', 1000); }
+        }
+
+        predictWebcam() {
+            requestAnimationFrame(() => this.predictWebcam());
+            if(this.state.galleryActive) return;
+            if(!this.state.active || this.state.countdownActive) return;
+            if (!this.handLandmarker) return;
+            const video = document.getElementById('webcam-video');
+            if (video.readyState < 2) return;
+            const results = this.handLandmarker.detectForVideo(video, performance.now());
+            if (results.landmarks && results.landmarks.length > 0) {
+                const landmarks = results.landmarks[0];
+                const tips = [8, 12, 16, 20];
+                let avgDist = 0;
+                tips.forEach(t => avgDist += Math.hypot(landmarks[t].x - landmarks[0].x, landmarks[t].y - landmarks[0].y));
+                avgDist /= 4;
+                if (avgDist < 0.25) this.setMode(0); else if (avgDist > 0.42) this.setMode(1); 
+            }
+        }
+
+        setMode(m) { this.state.targetTransition = m === 0 ? 0.0 : 1.0; }
+
+        triggerNewYearArrival() {
+            if(this.state.newYearTriggered) return;
+            this.state.newYearTriggered = true;
+            this.state.countdownActive = false;
+            this.setMode(1); 
+            this.state.impact = 5.0;
+            const title = document.getElementById('main-title-text');
+            title.textContent = "HAPPY NEW YEAR 2026";
+            title.style.color = "#ffffff";
+            title.style.textShadow = "0 0 50px #f3d37c";
+        }
+
+        initCountdown() {
+            const timerEl = document.getElementById('countdown-timer');
+            let lastSecond = -1;
+            const update = () => {
+                const now = new Date().getTime();
+                const distance = this.targetNewYear - now;
+                const pad = (n) => String(n).padStart(2, '0');
+                if (distance <= 0) {
+                    timerEl.textContent = "WELCOME TO 2026";
+                    if(this.state.active) this.triggerNewYearArrival();
+                } else {
+                    const d = Math.floor(distance / (1000 * 60 * 60 * 24));
+                    const h = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+                    const m = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+                    const s = Math.floor((distance % (1000 * 60)) / 1000);
+                    timerEl.textContent = `${pad(d)}D : ${pad(h)}H : ${pad(m)}M : ${pad(s)}S`;
+                    if (distance <= 6000) { 
+                        this.state.countdownActive = true;
+                        const currentSec = Math.floor(distance / 1000); 
+                        if(currentSec !== lastSecond && currentSec >= 0) {
+                            this.sampleNumberPoints(currentSec.toString());
+                            this.state.impact = 0.6;
+                            lastSecond = currentSec;
+                        }
+                        timerEl.style.transform = `translateX(${Math.sin(Date.now() * 0.05) * 2}px) scale(1.2)`;
+                        timerEl.style.color = "#ffffff";
+                    } else {
+                        this.state.countdownActive = false;
+                        timerEl.style.transform = "scale(1)";
+                        timerEl.style.color = "#f3d37c";
+                    }
+                }
+            };
+            setInterval(update, 50);
+        }
+
+        createWishStar() {
+            const count = 300;
+            const geo = new THREE.BufferGeometry();
+            const pos = new Float32Array(count * 3);
+            const rnd = new Float32Array(count);
+            for(let i=0; i<count; i++) {
+                const r = Math.random() * 1.5;
+                const theta = Math.random() * Math.PI * 2;
+                const phi = Math.acos(2 * Math.random() - 1);
+                pos[i*3] = r * Math.sin(phi) * Math.cos(theta);
+                pos[i*3+1] = r * Math.sin(phi) * Math.sin(theta);
+                pos[i*3+2] = r * Math.cos(phi);
+                rnd[i] = Math.random();
+            }
+            geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+            geo.setAttribute('aRandom', new THREE.BufferAttribute(rnd, 1));
+            const mat = new THREE.ShaderMaterial({
+                vertexShader: wishVertexShader, fragmentShader: wishFragmentShader,
+                transparent: true, blending: THREE.AdditiveBlending, depthWrite: false,
+                uniforms: { uTime: { value: 0 }, uPixelRatio: { value: Math.min(window.devicePixelRatio, 2) } }
+            });
+            const points = new THREE.Points(geo, mat);
+            const startPos = new THREE.Vector3(0, -45, 10);
+            const endPos = new THREE.Vector3(0, 8, 0);
+            points.position.copy(startPos);
+            this.scene.add(points);
+            return { points, startTime: performance.now(), duration: 2400, startPos, endPos };
+        }
+
+        initEvents() {
+            window.addEventListener('resize', () => {
+                this.camera.aspect = window.innerWidth / window.innerHeight;
+                this.camera.updateProjectionMatrix();
+                this.renderer.setSize(window.innerWidth, window.innerHeight);
+                this.composer.setSize(window.innerWidth, window.innerHeight);
+            });
+
+            document.getElementById('enter-scene').addEventListener('click', async () => {
+                this.state.active = true; this.setMode(0);
+                document.getElementById('body-wrap').classList.add('scene-active');
+                const music = document.getElementById('bg-music');
+                if(!this.state.musicPlaying) {
+                  music.play().then(() => { this.state.musicPlaying = true; document.getElementById('music-toggle').classList.add('playing'); }).catch(() => {});
+                }
+                await this.setupWebcam();
+            });
+
+            document.getElementById('open-gallery').onclick = (e) => { 
+                e.preventDefault();
+                this.state.galleryActive = true; 
+                document.getElementById('gallery-overlay').classList.add('active'); 
+                document.getElementById('video-container').classList.remove('visible');
+            };
+            document.getElementById('close-gallery').onclick = (e) => { 
+                this.state.galleryActive = false; 
+                document.getElementById('gallery-overlay').classList.remove('active'); 
+                if(this.state.camVisible) document.getElementById('video-container').classList.add('visible');
+            };
+            
+            const music = document.getElementById('bg-music');
+            document.getElementById('music-toggle').onclick = () => {
+                if(this.state.musicPlaying) { music.pause(); document.getElementById('music-toggle').classList.remove('playing'); }
+                else { music.play(); document.getElementById('music-toggle').classList.add('playing'); }
+                this.state.musicPlaying = !this.state.musicPlaying;
+            };
+
+            const wishInput = document.getElementById('wish-input');
+            const handleSend = () => { if(wishInput.value.trim()){ this.wishes.push(this.createWishStar()); wishInput.value = ""; } };
+            document.getElementById('send-btn').onclick = handleSend;
+            wishInput.onkeypress = (e) => { if(e.key==='Enter') handleSend(); };
+
+            window.addEventListener('keydown', e => {
+                if(!this.state.active) return;
+                const k = e.key.toLowerCase();
+                if (k === 'v') {
+                    this.state.camVisible = !this.state.camVisible;
+                    if(!this.state.galleryActive) document.getElementById('video-container').classList.toggle('visible', this.state.camVisible);
+                }
+                if (k === 'h') {
+                    this.state.uiHidden = !this.state.uiHidden;
+                    ['ui-main', 'wish-ui', 'hint-text'].forEach(id => document.getElementById(id).classList.toggle('hidden', this.state.uiHidden));
+                }
+                if (k === '1') this.setMode(0);
+                if (k === '2') this.setMode(1);
+            });
+        }
+
+        animate() {
+            const now = performance.now();
+            const time = now * 0.001;
+            const deltaFactor = this.state.galleryActive ? 0.1 : 1.0;
+            
+            this.material.uniforms.uTime.value += (0.016 * deltaFactor);
+            this.state.transition += (this.state.targetTransition - this.state.transition) * 0.04;
+            this.material.uniforms.uTransition.value = this.state.transition;
+            
+            const targetNumMode = this.state.countdownActive ? 1.0 : 0.0;
+            this.material.uniforms.uNumberMode.value += (targetNumMode - this.material.uniforms.uNumberMode.value) * 0.08;
+            this.state.impact *= 0.92;
+            this.material.uniforms.uImpact.value = this.state.impact;
+
+            this.camRadius += ((this.state.active ? 70 : 85) - this.camRadius) * 0.02;
+            this.camY += ((this.state.active ? 20 : 10) - this.camY) * 0.02;
+            this.lookY += ((this.state.active ? -5 : 0) - this.lookY) * 0.02;
+
+            const camAngle = time * (this.state.active ? 0.05 : 0.02) * deltaFactor;
+            this.camera.position.x = Math.sin(camAngle) * this.camRadius;
+            this.camera.position.y = this.camY; 
+            this.camera.position.z = Math.cos(camAngle) * this.camRadius;
+            this.camera.lookAt(0, this.lookY, 0); 
+            
+            this.mainGroup.position.y += ( (this.state.active ? -10 : 0) - this.mainGroup.position.y) * 0.02;
+
+            for(let i = this.wishes.length - 1; i >= 0; i--) {
+                const w = this.wishes[i];
+                const t = Math.min((now - w.startTime) / w.duration, 1.0);
+                const easedT = t < 0.5 ? 16 * t * t * t * t * t : 1 + 16 * (t - 1) * Math.pow((t - 1), 4);
+                const pos = new THREE.Vector3().lerpVectors(w.startPos, w.endPos, easedT);
+                pos.x += Math.sin(easedT * Math.PI) * 12; pos.y += Math.sin(easedT * Math.PI) * 15;
+                w.points.position.copy(pos);
+                w.points.material.uniforms.uTime.value = time;
+                if(t >= 1.0) { this.state.impact = 1.0; this.scene.remove(w.points); this.wishes.splice(i, 1); }
+            }
+            this.dust.rotation.y += 0.0004 * deltaFactor;
+            this.composer.render();
+            requestAnimationFrame(() => this.animate());
+        }
+    }
+    window.onload = () => new YearInMotion();
+  </script>
+</body>
+</html>
